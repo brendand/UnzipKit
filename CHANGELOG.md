@@ -1,5 +1,58 @@
 # UnzipKit CHANGELOG
 
+## 1.9
+
+* Added support for `NSProgress` and `NSProgressReporting` in all extraction and iteration methods (Issue #32)
+* Added detailed logging using new unified logging framework. See [the readme](README.md) for more details (Issue #47)
+* Added support for archiving and restoring files' POSIX permissions (PRs #84, #86, #87 - Thanks, [@MartinLau7](https://github.com/MartinLau7)!)
+* Added methods to check data integrity of an individual archived file, or the entire archive (Issue #63)
+* Fixed a crasher in `extractBufferedDataFromFile:error:action:`, which also manifested in other methods that use it, like `validatePassword` (Issue #51 - Thanks, [@amosavian](https://github.com/amosavian), [@monobono](https://github.com/monobono), and [@segunlee](https://github.com/segunlee)!)
+* Upgraded project to Xcode 9 and to the macOS 10.13 and iOS 11 SDKs (Issue #61)
+* Consolidated targets so they're shared between iOS and macOS (Issue #62)
+* Added a CocoaPods test spec (Issue #59)
+* Improved the way warnings are ignored to be more consistent, and so they're only ignored in `minizip`, and not the UnzipKit sources (Issue #68)
+
+## 1.8.5
+
+* Fixed issues with localization (again, again) (Issue #42). Thanks, @stevenp!
+
+## 1.8.4
+
+* Updated to Xcode 8 (Issue #50)
+* Fixed issues with localization (again) (Issue #42). Thanks, @ConfusedVorlon and @tomjpsun!
+
+## 1.8.3
+
+* Fixed bug in iOS framework target causing a framework bundle not to be produced (Issue #48 – Thanks, @amosavian!)
+* Added CI automation to release tagged successful builds to CocoaPods from Travis (Issue #49)
+
+## 1.8.2
+
+Fixed issues with localization, that could affect submission through iTunes Connect (Issue #42)
+
+## 1.8.1
+
+* Added checking whether a file is compressed with the Deflate64 method, and returning a specific error code for that unsupported format (Issue #37)
+* Fixed internationalization, laying the groundwork for non-US-English localization in the future. If you use UnzipKit from Carthage or CocoaPods, and run your app using the "Show non-localized strings" option, UnzipKit's strings should no longer display as all-cap (Issue #38)
+
+## 1.8
+
+Fixed a bug causing delete operations (including writing updated data with the `overwrite` flag set to true) to fail when the archive resides on an external volume (Issue #36)
+
+## 1.7.2
+
+Fixed the nullability attributes of the 'password' argument in the UZKArchive intitializers (Issue #34 - Thanks, Mohammad!)
+
+## 1.7.1
+
+Fixed a bug causing the UZKErrorDomain constant not to be visible from client projects using Swift 2.2 (Xcode 7.3) or greater (Issue #33)
+
+## 1.7
+
+* Reduced memory footprint while using `extractFilesTo:overwrite:progress:error` to extract an archive. This method now uses a buffer to read and write the archived file, rather than reading it into memory up front (Issue #27, PR #28). Thanks, @brendand!
+* Added `nullable` attribute to the return types of the `extractData...` methods, so they play more nicely with Swift's error handling (PR #29). Thanks, @amosavian!
+* Fixed a compiler warning that started showing up in Xcode 7.3 (Issue #26). Thanks again, @brendand!
+
 ## 1.6.2
 
 Fixed some issues when extracting files from an archive:

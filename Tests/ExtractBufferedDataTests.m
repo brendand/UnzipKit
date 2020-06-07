@@ -6,10 +6,28 @@
 //  Copyright (c) 2015 Abbey Code. All rights reserved.
 //
 
-#import <DTPerformanceSession/DTSignalFlag.h>
+#import "UnzipKit.h"
 
 #import "UZKArchiveTestCase.h"
-@import UnzipKit;
+#import "UnzipKitMacros.h"
+
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#import <sys/kdebug_signpost.h>
+enum SignPostCode: uint {   // Use to reference in Instruments (http://stackoverflow.com/a/39416673/105717)
+    SignPostCodeCreateTextFile = 0,
+    SignPostCodeArchiveData = 1,
+    SignPostCodeExtractData = 2,
+};
+
+enum SignPostColor: uint {  // standard color scheme for signposts in Instruments
+    SignPostColorBlue = 0,
+    SignPostColorGreen = 1,
+    SignPostColorPurple = 2,
+    SignPostColorOrange = 3,
+    SignPostColorRed = 4,
+};
+#endif
 
 @interface ExtractBufferedDataTests : UZKArchiveTestCase
 @end
@@ -30,7 +48,7 @@
                                                  action:
                     ^(NSData *dataChunk, CGFloat percentDecompressed) {
 #if DEBUG
-                        NSLog(@"Decompressed: %f%%", percentDecompressed);
+                        UZKLogDebug("Decompressed: %f%%", percentDecompressed);
 #endif
                         [reconstructedFile appendBytes:dataChunk.bytes
                                                 length:dataChunk.length];
@@ -45,17 +63,18 @@
                   @"File extracted in buffer not returned correctly");
 }
 
+#if !TARGET_OS_IPHONE && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
 - (void)testExtractBufferedData_VeryLarge
 {
-    DTSendSignalFlag("Begin creating text file", DT_START_SIGNAL, TRUE);
+    kdebug_signpost_start(SignPostCodeCreateTextFile, 0, 0, 0, SignPostColorBlue);
     NSURL *largeTextFile = [self emptyTextFileOfLength:100000000]; // Increase for a more dramatic test
     XCTAssertNotNil(largeTextFile, @"No large text file URL returned");
-    DTSendSignalFlag("End creating text file", DT_END_SIGNAL, TRUE);
+    kdebug_signpost_end(SignPostCodeCreateTextFile, 0, 0, 0, SignPostColorBlue);
     
-    DTSendSignalFlag("Begin archiving data", DT_START_SIGNAL, TRUE);
+    kdebug_signpost_start(SignPostCodeArchiveData, 0, 0, 0, SignPostColorGreen);
     NSURL *archiveURL = [self archiveWithFiles:@[largeTextFile]];
     XCTAssertNotNil(archiveURL, @"No archived large text file URL returned");
-    DTSendSignalFlag("Begin archiving data", DT_END_SIGNAL, TRUE);
+    kdebug_signpost_end(SignPostCodeArchiveData, 0, 0, 0, SignPostColorGreen);
     
     NSURL *deflatedFileURL = [self.tempDirectory URLByAppendingPathComponent:@"DeflatedTextFile.txt"];
     BOOL createSuccess = [[NSFileManager defaultManager] createFileAtPath:deflatedFileURL.path
@@ -70,20 +89,20 @@
     
     UZKArchive *archive = [[UZKArchive alloc] initWithURL:archiveURL error:nil];
     
-    DTSendSignalFlag("Begin extracting buffered data", DT_START_SIGNAL, TRUE);
+    kdebug_signpost_start(SignPostCodeExtractData, 0, 0, 0, SignPostColorPurple);
     
     NSError *error = nil;
     BOOL success = [archive extractBufferedDataFromFile:largeTextFile.lastPathComponent
                                                   error:&error
                                                  action:
                     ^(NSData *dataChunk, CGFloat percentDecompressed) {
-#if DEBUG
-                        NSLog(@"Decompressed: %f%%", percentDecompressed);
-#endif
+# if DEBUG
+                        UZKLogDebug("Decompressed: %f%%", percentDecompressed);
+# endif
                         [deflated writeData:dataChunk];
                     }];
     
-    DTSendSignalFlag("End extracting buffered data", DT_END_SIGNAL, TRUE);
+    kdebug_signpost_end(SignPostCodeExtractData, 0, 0, 0, SignPostColorPurple);
     
     XCTAssertTrue(success, @"Failed to read buffered data");
     XCTAssertNil(error, @"Error reading buffered data");
@@ -95,6 +114,7 @@
     
     XCTAssertTrue([fileData isEqualToData:deflatedData], @"Data didn't restore correctly");
 }
+#endif
 
 
 @end

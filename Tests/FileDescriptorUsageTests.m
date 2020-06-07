@@ -7,7 +7,7 @@
 //
 
 #import "UZKArchiveTestCase.h"
-@import UnzipKit;
+#import "UnzipKit.h"
 
 @interface FileDescriptorUsageTests : UZKArchiveTestCase
 @end
@@ -15,6 +15,7 @@
 @implementation FileDescriptorUsageTests
 
 
+#if !TARGET_OS_IPHONE
 - (void)testFileDescriptorUsage
 {
     NSInteger initialFileCount = [self numberOfOpenFileHandles];
@@ -46,7 +47,6 @@
         
         for (NSString *fileName in fileList) {
             NSData *fileData = [archive extractDataFromFile:fileName
-                                                   progress:nil
                                                       error:&error];
             XCTAssertNotNil(fileData, @"No data returned");
             XCTAssertNil(error, @"Error extracting data");
@@ -87,7 +87,7 @@
         NSError *performOnFilesError = nil;
         BOOL performOnFilesResult =  [archive performOnFilesInArchive:^(UZKFileInfo *fileInfo, BOOL *stop) {
             NSError *extractError = nil;
-            NSData *fileData = [archive extractData:fileInfo progress:nil error:&extractError];
+            NSData *fileData = [archive extractData:fileInfo error:&extractError];
             XCTAssertNotNil(fileData, @"No data extracted");
             XCTAssertNil(extractError, @"Failed to extract file");
         } error:&performOnFilesError];
@@ -108,6 +108,9 @@
     NSFileManager *fm = [NSFileManager defaultManager];
     
     for (NSInteger i = 0; i < 100; i++) {
+        // Keep this test from stalling out the build
+        printf("testFileDescriptorUsage_WriteIntoArchive: Iteration %ld/100\n", (long)i);
+        
         NSString *tempDir = [self randomDirectoryName];
         NSURL *tempDirURL = [self.tempDirectory URLByAppendingPathComponent:tempDir];
         NSURL *testArchiveCopyURL = [tempDirURL URLByAppendingPathComponent:testArchiveName];
@@ -130,7 +133,6 @@
         
         for (NSString *fileName in fileList) {
             NSData *fileData = [archive extractDataFromFile:fileName
-                                                   progress:nil
                                                       error:&error];
             XCTAssertNotNil(fileData, @"No data extracted");
             XCTAssertNil(error, @"Error extracting data");
@@ -147,14 +149,12 @@
                                 compressionMethod:UZKCompressionMethodDefault
                                          password:nil
                                         overwrite:YES
-                                         progress:nil
                                             error:&writeError];
             XCTAssertTrue(writeResult, @"Failed to write to archive (attempt %d)", x);
             XCTAssertNil(writeError, @"Error writing to archive (attempt %d)", x);
             
             NSError *extractError = nil;
             NSData *extractedData = [archive extractDataFromFile:fileName
-                                                        progress:nil
                                                            error:&extractError];
             XCTAssertEqualObjects(extractedData, newFileData, @"Incorrect data written to file (attempt %d)", x);
             XCTAssertNil(extractError, @"Error extracting from archive (attempt %d)", x);
@@ -165,6 +165,7 @@
     
     XCTAssertEqualWithAccuracy(initialFileCount, finalFileCount, 5, @"File descriptors were left open");
 }
+#endif
 
 
 @end

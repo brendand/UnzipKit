@@ -8,6 +8,7 @@
 
 #import "UZKArchiveTestCase.h"
 @import UnzipKit;
+#import "UnzipKitMacros.h"
 
 @interface ExtractFilesTests : UZKArchiveTestCase
 @end
@@ -39,19 +40,15 @@
         NSError *error = nil;
         BOOL success = [archive extractFilesTo:extractURL.path
                                      overwrite:NO
-                                      progress:^(UZKFileInfo *currentFile, CGFloat percentArchiveDecompressed) {
-#if DEBUG
-                                          NSLog(@"Extracting %@: %f%% complete", currentFile.filename, percentArchiveDecompressed * 100);
-#endif
-                                      }
                                          error:&error];
         
         XCTAssertNil(error, @"Error returned by extractFilesTo:overWrite:error:");
         XCTAssertTrue(success, @"Failed to extract %@ to %@", testArchiveName, extractURL);
         
         error = nil;
-        NSArray *extractedFiles = [fm contentsOfDirectoryAtPath:extractURL.path
-                                                          error:&error];
+        NSArray *extractedFiles = [[fm contentsOfDirectoryAtPath:extractURL.path
+                                                           error:&error]
+                                   sortedArrayUsingSelector:@selector(compare:)];
         
         XCTAssertNil(error, @"Failed to list contents of extract directory: %@", extractURL);
         
@@ -94,20 +91,16 @@
     NSError *error = nil;
     BOOL success = [archive extractFilesTo:extractURL.path
                                  overwrite:NO
-                                  progress:^(UZKFileInfo *currentFile, CGFloat percentArchiveDecompressed) {
-#if DEBUG
-                                      NSLog(@"Extracting %@: %f%% complete", currentFile.filename, percentArchiveDecompressed * 100);
-#endif
-                                  }
                                      error:&error];
     
     XCTAssertNil(error, @"Error returned by extractFilesTo:overWrite:error:");
     XCTAssertTrue(success, @"Failed to extract %@ to %@", testArchiveName, extractURL);
     
     error = nil;
-    NSArray *extractedFiles = [fm contentsOfDirectoryAtPath:extractURL.path
-                                                      error:&error];
-    
+    NSArray *extractedFiles = [[fm contentsOfDirectoryAtPath:extractURL.path
+                                                       error:&error]
+                               sortedArrayUsingSelector:@selector(compare:)];
+
     XCTAssertNil(error, @"Failed to list contents of extract directory: %@", extractURL);
     
     XCTAssertNotNil(extractedFiles, @"No list of files returned");
@@ -141,11 +134,6 @@
     NSError *error = nil;
     BOOL success = [archive extractFilesTo:extractURL.path
                                  overwrite:NO
-                                  progress:^(UZKFileInfo *currentFile, CGFloat percentArchiveDecompressed) {
-#if DEBUG
-                                      NSLog(@"Extracting %@: %f%% complete", currentFile.filename, percentArchiveDecompressed * 100);
-#endif
-                                  }
                                      error:&error];
     
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -168,11 +156,6 @@
     NSError *error = nil;
     BOOL success = [archive extractFilesTo:extractURL.path
                                  overwrite:NO
-                                  progress:^(UZKFileInfo *currentFile, CGFloat percentArchiveDecompressed) {
-#if DEBUG
-                                      NSLog(@"Extracting %@: %f%% complete", currentFile.filename, percentArchiveDecompressed * 100);
-#endif
-                                  }
                                      error:&error];
     BOOL dirExists = [fm fileExistsAtPath:extractURL.path];
     
@@ -193,11 +176,6 @@
     NSError *error = nil;
     BOOL success = [archive extractFilesTo:extractURL.path
                                  overwrite:NO
-                                  progress:^(UZKFileInfo *currentFile, CGFloat percentArchiveDecompressed) {
-#if DEBUG
-                                      NSLog(@"Extracting %@: %f%% complete", currentFile.filename, percentArchiveDecompressed * 100);
-#endif
-                                  }
                                      error:&error];
     
     XCTAssertTrue(success, @"Extract Aces archive failed");
@@ -214,27 +192,32 @@
                                                    return NO;
 #pragma clang diagnostic pop
                                                }];
+    NSArray<NSURL*> *extractedURLs = [[enumerator allObjects]
+                                      sortedArrayUsingComparator:^NSComparisonResult(NSURL  * _Nonnull obj1, NSURL  * _Nonnull obj2) {
+                                          return [obj1.path compare:obj2.path];
+                                      }];
     
     NSArray *expectedFiles = @[
                                @"aces-dev-1.0",
                                @"aces-dev-1.0/CHANGELOG.md",
+                               @"aces-dev-1.0/LICENSE.md",
+                               @"aces-dev-1.0/README.md",
                                @"aces-dev-1.0/documents",
                                @"aces-dev-1.0/documents/README.md",
                                @"aces-dev-1.0/images",
                                @"aces-dev-1.0/images/README.md",
-                               @"aces-dev-1.0/LICENSE.md",
-                               @"aces-dev-1.0/README.md",
                                ];
     
     NSUInteger i = 0;
     
-    for (NSURL *extractedURL in enumerator) {
+    for (NSURL *extractedURL in extractedURLs) {
         NSString *actualPath = extractedURL.path;
         NSString *expectedPath = expectedFiles[i++];
         XCTAssertTrue([actualPath hasSuffix:expectedPath], @"Unexpected file extracted: %@", actualPath);
     }
 }
 
+#if !TARGET_OS_IPHONE
 - (void)testExtractZip64_LargeFile
 {
     NSArray<NSURL*> *urls = @[
@@ -253,14 +236,6 @@
     
     BOOL success = [archive extractFilesTo:extractURL.path
                                  overwrite:NO
-                                  progress:
-#if DEBUG
-                    ^(UZKFileInfo *currentFile, CGFloat percentArchiveDecompressed) {
-                        NSLog(@"Extracting %@: %f%% complete", currentFile.filename, percentArchiveDecompressed * 100);
-                    }
-#else
-                    nil
-#endif
                                      error:&error];
     
     XCTAssertTrue(success, @"Extract large Zip64 archive failed");
@@ -303,14 +278,6 @@
     
     BOOL success = [archive extractFilesTo:extractURL.path
                                  overwrite:NO
-                                  progress:
-#if DEBUG
-                    ^(UZKFileInfo *currentFile, CGFloat percentArchiveDecompressed) {
-                        NSLog(@"Extracting %@: %f%% complete", currentFile.filename, percentArchiveDecompressed * 100);
-                    }
-#else
-                    nil
-#endif
                                      error:&error];
     
     XCTAssertTrue(success, @"Extract numerous Zip64 archive failed");
@@ -322,6 +289,7 @@
     XCTAssertNil(error, @"Failed to list extracted files from numerous Zip64 archive");
     XCTAssertEqual(extractedFiles.count, numberOfFiles, @"Incorrect number of files extracted from numerous Zip64 archive");
 }
+#endif
 
 
 @end

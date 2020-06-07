@@ -8,7 +8,7 @@
 
 #import "UZKArchiveTestCase.h"
 #import "zip.h"
-@import UnzipKit;
+#import "UnzipKit.h"
 
 @interface WriteBufferedDataTests : UZKArchiveTestCase
 @end
@@ -103,6 +103,7 @@
     XCTAssertEqual(writeError.code, errorCode, @"Wrong error code returned");
 }
 
+#if !TARGET_OS_IPHONE
 - (void)testWriteInfoBuffer_PasswordGiven
 {
     NSURL *testArchiveURL = [self.tempDirectory URLByAppendingPathComponent:@"testWriteInfoBuffer_PasswordGiven.zip"];
@@ -144,6 +145,7 @@
     
     XCTAssertTrue(extractSuccess, @"Failed to extract archive (encryption is incorrect)");
 }
+#endif
 
 - (void)testWriteInfoBuffer_PasswordGiven_NoCRC
 {

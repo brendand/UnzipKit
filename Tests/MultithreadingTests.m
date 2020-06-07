@@ -7,7 +7,8 @@
 //
 
 #import "UZKArchiveTestCase.h"
-@import UnzipKit;
+#import "UnzipKit.h"
+#import "UnzipKitMacros.h"
 
 @interface MultithreadingTests : UZKArchiveTestCase
 @end
@@ -15,6 +16,7 @@
 @implementation MultithreadingTests
 
 
+#if !TARGET_OS_IPHONE
 - (void)testMultithreading {
     UZKArchive *largeArchiveA = [[UZKArchive alloc] initWithURL:[self largeArchive] error:nil];
     UZKArchive *largeArchiveB = [[UZKArchive alloc] initWithURL:[self largeArchive] error:nil];
@@ -27,7 +29,7 @@
     NSBlockOperation *enumerateA = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchiveA performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration A");
@@ -37,7 +39,7 @@
     NSBlockOperation *enumerateB = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchiveB performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration B");
@@ -47,7 +49,7 @@
     NSBlockOperation *enumerateC = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchiveC performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration C");
@@ -66,7 +68,7 @@
     
     [self waitForExpectationsWithTimeout:30 handler:^(NSError *error) {
         if (error) {
-            NSLog(@"Error while waiting for expectations: %@", error);
+            UZKLogError("Error while waiting for expectations: %@", error);
         }
     }];
 }
@@ -85,7 +87,7 @@
     NSBlockOperation *enumerateA = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchiveA performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration A");
@@ -95,7 +97,7 @@
     NSBlockOperation *enumerateB = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchiveB performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration B");
@@ -105,7 +107,7 @@
     NSBlockOperation *enumerateC = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchiveC performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration C");
@@ -124,12 +126,13 @@
     
     [self waitForExpectationsWithTimeout:30 handler:^(NSError *error) {
         if (error) {
-            NSLog(@"Error while waiting for expectations: %@", error);
+            UZKLogError("Error while waiting for expectations: %@", error);
         }
     }];
 }
 
 - (void)testMultithreading_SingleArchiveObject {
+    
     UZKArchive *largeArchive = [[UZKArchive alloc] initWithURL:[self largeArchive] error:nil];
     
     XCTestExpectation *expectationA = [self expectationWithDescription:@"A finished"];
@@ -139,7 +142,7 @@
     NSBlockOperation *enumerateA = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchive performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration A");
@@ -149,7 +152,7 @@
     NSBlockOperation *enumerateB = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchive performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration B");
@@ -159,7 +162,7 @@
     NSBlockOperation *enumerateC = [NSBlockOperation blockOperationWithBlock:^{
         NSError *error = nil;
         [largeArchive performOnDataInArchive:^(UZKFileInfo *fileInfo, NSData *fileData, BOOL *stop) {
-            NSLog(@"File name: %@", fileInfo.filename);
+            UZKLogInfo("File name: %@", fileInfo.filename);
         } error:&error];
         
         XCTAssertNil(error, @"Failed enumeration C");
@@ -178,10 +181,11 @@
     
     [self waitForExpectationsWithTimeout:30 handler:^(NSError *error) {
         if (error) {
-            NSLog(@"Error while waiting for expectations: %@", error);
+            UZKLogError("Error while waiting for expectations: %@", error);
         }
     }];
 }
+#endif
 
 
 @end

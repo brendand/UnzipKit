@@ -56,12 +56,12 @@ typedef NS_ENUM(NSInteger, UZKCompressionMethod) {
 /**
  *  Size of the uncompressed file
  */
-@property (readonly) NSUInteger uncompressedSize;
+@property (readonly) unsigned long long int uncompressedSize;
 
 /**
  *  Size of the compressed file
  */
-@property (readonly) NSUInteger compressedSize;
+@property (readonly) unsigned long long int compressedSize;
 
 /**
  *  YES if the file will be continued of the next volume
@@ -77,6 +77,13 @@ typedef NS_ENUM(NSInteger, UZKCompressionMethod) {
  *  The type of compression
  */
 @property (readonly) UZKCompressionMethod compressionMethod;
+
+/**
+ *  The POSIX permissions of the file, like you would get by retrieving the `NSFilePosixPermissions`
+ *  key from the attributes NSFileManager returns. Assign in octal form, like 0777 in Objective-C or
+ *  0o777 in Swift
+ */
+@property (nonatomic, readonly) short posixPermissions;
 
 
 

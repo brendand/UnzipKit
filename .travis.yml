@@ -1,37 +1,41 @@
 language:
   - objective-c
 
-osx_image: xcode7.2
+osx_image: xcode9.3
 
-before_install:
-    - brew update
-    - brew install carthage
+before_script:
+    # Make log level less verbose. Temporarily undo if more info is needed
+    - sudo log config --mode "level:default"
 
 matrix:
   include:
-    - xcode_workspace: UnzipKit.xcworkspace
-      xcode_scheme: UnzipKit
-      xcode_sdk: macosx
-      env: Name=Mac; TEST=test
+   - stage: Test
+     env: Name=Mac
+     # The CLANG arguments and find command fail the build on analyzer errors
+     script: xcodebuild -workspace UnzipKit.xcworkspace -scheme UnzipKit -sdk macosx -configuration Release analyze test ENABLE_NS_ASSERTIONS=1 CLANG_ANALYZER_OUTPUT=html CLANG_ANALYZER_OUTPUT_DIR=analyzer-output && [[ -z `find analyzer-output -name "*.html"` ]]
 
-    - xcode_workspace: UnzipKit.xcworkspace
-      xcode_scheme: UnzipKit-iOS
-      xcode_sdk: iphonesimulator
-      env: Name=iOS
+   - stage: Test
+     env: Name=iOS
+     # The CLANG arguments and find command fail the build on analyzer errors
+     script: xcodebuild -workspace UnzipKit.xcworkspace -scheme UnzipKit -destination 'platform=iOS Simulator,name=iPhone 7,OS=latest' -configuration Release analyze test ENABLE_NS_ASSERTIONS=1 CLANG_ANALYZER_OUTPUT=html CLANG_ANALYZER_OUTPUT_DIR=analyzer-output && [[ -z `find analyzer-output -name "*.html"` ]]
 
-    - xcode_workspace: UnzipKitDemo/UnzipKitDemo.xcworkspace
-      xcode_scheme: UnzipKitDemo
-      xcode_sdk: iphonesimulator
-      env: Name=DemoAppBuild
+   - stage: Test
+     env: Name=DemoAppBuild
+     # The CLANG arguments and find command fail the build on analyzer errors
+     script: ./Scripts/install-demo-libs.sh && xcodebuild -workspace UnzipKitDemo/UnzipKitDemo.xcworkspace -scheme UnzipKitDemo -destination 'platform=iOS Simulator,name=iPhone 7,OS=latest' -configuration Release analyze test ENABLE_NS_ASSERTIONS=1 CLANG_ANALYZER_OUTPUT=html CLANG_ANALYZER_OUTPUT_DIR=analyzer-output && [[ -z `find analyzer-output -name "*.html"` ]]
 
-before_script:
-  - ./Scripts/install-demo-libs.sh
-  - brew install carthage
+   - stage: Validate
+     env: Name=CocoaPods
+     script: ./Scripts/cocoapod-validate.sh
 
-script:
-  - xctool -workspace $TRAVIS_XCODE_WORKSPACE -scheme $TRAVIS_XCODE_SCHEME -sdk $TRAVIS_XCODE_SDK analyze -configuration Release $TEST ENABLE_NS_ASSERTIONS=1
-  - ./Scripts/carthage-validate.sh
-  - ./Scripts/cocoapod-validate.sh
+   - stage: Validate
+     env: Name=Carthage
+     script: ./Scripts/carthage-validate.sh
+
+   - stage: Release
+     if: tag IS present
+     before_install: brew upgrade python # Needs Python 3
+     script: ./Scripts/push-output.sh
 
 # Turn on Docker, container-based infrastructure
 sudo: false

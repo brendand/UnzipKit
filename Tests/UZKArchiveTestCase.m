@@ -9,9 +9,17 @@
 #import "UZKArchiveTestCase.h"
 
 #import "unzip.h"
+#import "UnzipKitMacros.h"
 
 static NSDateFormatter *testFileInfoDateFormatter;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundef"
+#if UNIFIED_LOGGING_SUPPORTED
+os_log_t unzipkit_log;
+BOOL unzipkitIsAtLeast10_13SDK;
+#endif
+#pragma clang diagnostic pop
 
 
 @implementation UZKArchiveTestCase
@@ -20,6 +28,12 @@ static NSDateFormatter *testFileInfoDateFormatter;
 
 #pragma mark - Setup/Teardown
 
++ (void)initialize {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        UZKLogInit();
+    });
+}
 
 - (void)setUp {
     [super setUp];
@@ -36,7 +50,8 @@ static NSDateFormatter *testFileInfoDateFormatter;
     NSString *uniqueName = [self randomDirectoryName];
     NSError *error = nil;
     
-    NSArray *testFiles = @[@"Test Archive.zip",
+    NSArray *testFiles = @[
+                           @"Test Archive.zip",
                            @"Test Archive (Password).zip",
                            @"L'incertain.zip",
                            @"Aces.zip",
@@ -45,12 +60,17 @@ static NSDateFormatter *testFileInfoDateFormatter;
                            @"Spanned Archive.zip.001",
                            @"Test File A.txt",
                            @"Test File B.jpg",
-                           @"Test File C.m4a"];
+                           @"Test File C.m4a",
+                           @"NotAZip-PK-ContentsUnknown",
+                           @"Modified CRC Archive.zip",
+                           ];
     
-    NSArray *unicodeFiles = @[@"Ⓣest Ⓐrchive.zip",
+    NSArray *unicodeFiles = @[
+                              @"Ⓣest Ⓐrchive.zip",
                               @"Test File Ⓐ.txt",
                               @"Test File Ⓑ.jpg",
-                              @"Test File Ⓒ.m4a"];
+                              @"Test File Ⓒ.m4a",
+                              ];
     
     NSString *tempDirSubtree = [@"UnzipKitTest" stringByAppendingPathComponent:uniqueName];
     
@@ -60,7 +80,7 @@ static NSDateFormatter *testFileInfoDateFormatter;
     self.tempDirectory = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:tempDirSubtree]
                                     isDirectory:YES];
     
-    NSLog(@"Temp directory: %@", self.tempDirectory);
+    UZKLog("Temp directory: %@", self.tempDirectory);
     
     [fm createDirectoryAtURL:self.tempDirectory
  withIntermediateDirectories:YES
@@ -104,11 +124,11 @@ static NSDateFormatter *testFileInfoDateFormatter;
     }
     
     self.nonZipTestFilePaths = [self.testFileURLs keysOfEntriesPassingTest:^BOOL(NSString *key, id obj, BOOL *stop) {
-        return [key rangeOfString:@"zip"].location == NSNotFound;
+        return [key.lowercaseString rangeOfString:@"zip"].location == NSNotFound;
     }];
     
     self.nonZipUnicodeFilePaths = [self.unicodeFileURLs keysOfEntriesPassingTest:^BOOL(NSString *key, id obj, BOOL *stop) {
-        return [key rangeOfString:@"zip"].location == NSNotFound;
+        return [key.lowercaseString rangeOfString:@"zip"].location == NSNotFound;
     }];
     
     // Make a "corrupt" zip file
@@ -162,31 +182,6 @@ static NSDateFormatter *testFileInfoDateFormatter;
     return [NSString stringWithFormat:@"%@ %@", prefix, [self randomDirectoryName]];
 }
 
-- (NSInteger)numberOfOpenFileHandles {
-    int pid = [[NSProcessInfo processInfo] processIdentifier];
-    NSPipe *pipe = [NSPipe pipe];
-    NSFileHandle *file = pipe.fileHandleForReading;
-    
-    NSTask *task = [[NSTask alloc] init];
-    task.launchPath = @"/usr/sbin/lsof";
-    task.arguments = @[@"-P", @"-n", @"-p", [NSString stringWithFormat:@"%d", pid]];
-    task.standardOutput = pipe;
-    
-    [task launch];
-    
-    NSData *data = [file readDataToEndOfFile];
-    [file closeFile];
-    
-    NSString *lsofOutput = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
-    
-//    NSLog(@"LSOF output:\n%@", lsofOutput);
-    
-    NSInteger result = [lsofOutput componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]].count;
-//    NSLog(@"LSOF result: %ld", result);
-    
-    return result;
-}
-
 - (NSURL *)emptyTextFileOfLength:(NSUInteger)fileSize
 {
     NSURL *resultURL = [self.tempDirectory URLByAppendingPathComponent:
@@ -211,13 +206,45 @@ static NSDateFormatter *testFileInfoDateFormatter;
     return resultURL;
 }
 
-- (NSURL *)archiveWithFiles:(NSArray *)fileURLs
-{
-    NSString *uniqueString = [[NSProcessInfo processInfo] globallyUniqueString];
-    return [self archiveWithFiles:fileURLs name:uniqueString];
+#if !TARGET_OS_IPHONE
+
+- (NSInteger)numberOfOpenFileHandles {
+    int pid = [[NSProcessInfo processInfo] processIdentifier];
+    NSPipe *pipe = [NSPipe pipe];
+    NSFileHandle *file = pipe.fileHandleForReading;
+    
+    NSTask *task = [[NSTask alloc] init];
+    task.launchPath = @"/usr/sbin/lsof";
+    task.arguments = @[@"-P", @"-n", @"-p", [NSString stringWithFormat:@"%d", pid]];
+    task.standardOutput = pipe;
+    
+    [task launch];
+    
+    NSData *data = [file readDataToEndOfFile];
+    [file closeFile];
+    
+    NSString *lsofOutput = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
+    
+//    UZKLog("LSOF output:\n%@", lsofOutput);
+    
+    NSInteger result = [lsofOutput componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]].count;
+//    UZKLog("LSOF result: %ld", result);
+    
+    return result;
 }
 
-- (NSURL *)archiveWithFiles:(NSArray *)fileURLs name:(NSString *)name
+- (NSURL *)archiveWithFiles:(NSArray *)fileURLs
+{
+    return [self archiveWithFiles:fileURLs password:nil];
+}
+
+- (NSURL *)archiveWithFiles:(NSArray *)fileURLs password:(NSString *)password
+{
+    NSString *uniqueString = [[NSProcessInfo processInfo] globallyUniqueString];
+    return [self archiveWithFiles:fileURLs password:password name:uniqueString];
+}
+
+- (NSURL *)archiveWithFiles:(NSArray *)fileURLs password:(NSString *)password name:(NSString *)name
 {
     NSURL *archiveURL = [[self.tempDirectory URLByAppendingPathComponent:name]
                          URLByAppendingPathExtension:@"zip"];
@@ -231,7 +258,7 @@ static NSDateFormatter *testFileInfoDateFormatter;
 
         consoleOutputHandle = [NSFileHandle fileHandleForWritingAtPath:consoleOutputFile.path];
         
-        NSLog(@"Writing zip command output to: %@", consoleOutputFile.path);
+        UZKLog("Writing zip command output to: %@", consoleOutputFile.path);
     }
     
     const NSUInteger maxFilesPerCall = 1500;
@@ -242,24 +269,33 @@ static NSDateFormatter *testFileInfoDateFormatter;
     
     while (startIndex < filePaths.count) {
         @autoreleasepool {
+            NSMutableArray<NSString*> *zipArgs = [NSMutableArray arrayWithArray:
+                                                  @[@"-j", archiveURL.path]];
+            
+            if (password) {
+                [zipArgs addObjectsFromArray:@[@"-P", password]];
+            }
+            
             NSRange currentRange = NSMakeRange(startIndex, MIN(pathsRemaining, maxFilesPerCall));
             NSArray *pathArrayChunk = [filePaths subarrayWithRange:currentRange];
             
+            [zipArgs addObjectsFromArray:pathArrayChunk];
+            
             NSTask *task = [[NSTask alloc] init];
             task.launchPath = @"/usr/bin/zip";
-            task.arguments = [@[@"-j", archiveURL.path] arrayByAddingObjectsFromArray:pathArrayChunk];
+            task.arguments = zipArgs;
             task.standardOutput = consoleOutputHandle;
             
-            NSLog(@"Compressing files %lu-%lu of %lu", startIndex + 1, startIndex + pathArrayChunk.count, filePaths.count);
+            UZKLog("Compressing files %lu-%lu of %lu", startIndex + 1, startIndex + pathArrayChunk.count, filePaths.count);
 
             [task launch];
             [task waitUntilExit];
             
             if (task.terminationStatus != 0) {
                 if (startIndex == 0) {
-                    NSLog(@"Failed to create zip archive");
+                    UZKLog("Failed to create zip archive");
                 } else {
-                    NSLog(@"Failed to add files to zip archive");
+                    UZKLog("Failed to add files to zip archive");
                 }
                 return nil;
             }
@@ -293,7 +329,7 @@ static NSDateFormatter *testFileInfoDateFormatter;
     [task waitUntilExit];
     
     if (task.terminationStatus != 0) {
-        NSLog(@"Failed to extract zip archive");
+        UZKLog("Failed to extract zip archive");
         return NO;
     }
     
@@ -309,9 +345,12 @@ static NSDateFormatter *testFileInfoDateFormatter;
     
     static NSInteger archiveNumber = 1;
     NSURL *largeArchiveURL = [self archiveWithFiles:emptyFiles
+                                           password:nil
                                                name:[NSString stringWithFormat:@"Large Archive %ld", archiveNumber++]];
     return largeArchiveURL;
 }
+
+#endif
 
 - (NSUInteger)crcOfFile:(NSURL *)url
 {

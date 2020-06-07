@@ -7,7 +7,7 @@
 //
 
 #import "UZKArchiveTestCase.h"
-@import UnzipKit;
+#import "UnzipKit.h"
 
 @interface ZipFileDetectionTests : UZKArchiveTestCase
 @end
@@ -48,6 +48,14 @@
     XCTAssertFalse(pathIsZip, @"JPG file is reported as a zip");
 }
 
+- (void)testPathIsAZip_NotAZip_FirstBytesPK
+{
+    NSURL *url = self.testFileURLs[@"NotAZip-PK-ContentsUnknown"];
+    NSString *path = url.path;
+    BOOL pathIsZip = [UZKArchive pathIsAZip:path];
+    XCTAssertFalse(pathIsZip, @"JPG file is reported as a zip");
+}
+
 - (void)testPathIsAZip_SmallFile
 {
     NSURL *url = [self emptyTextFileOfLength:1];
@@ -64,6 +72,7 @@
     XCTAssertFalse(pathIsZip, @"Missing file is reported as a zip");
 }
 
+#if !TARGET_OS_IPHONE
 - (void)testPathIsAZip_FileHandleLeaks
 {
     NSURL *smallFileURL = [self emptyTextFileOfLength:1];
@@ -87,6 +96,7 @@
     
     XCTAssertEqualWithAccuracy(initialFileCount, finalFileCount, 5, @"File descriptors were left open");
 }
+#endif
 
 #pragma mark - By URL
 
@@ -132,6 +142,7 @@
     XCTAssertFalse(urlIsZip, @"Missing file is reported as a zip");
 }
 
+#if !TARGET_OS_IPHONE
 - (void)testURLIsAZip_FileHandleLeaks
 {
     NSURL *smallFileURL = [self emptyTextFileOfLength:1];
@@ -155,5 +166,6 @@
     
     XCTAssertEqualWithAccuracy(initialFileCount, finalFileCount, 5, @"File descriptors were left open");
 }
+#endif
 
 @end
